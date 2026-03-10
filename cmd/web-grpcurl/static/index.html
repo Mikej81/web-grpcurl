@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>web-grpcurl</title>
+<style>
+  :root {
+    --bg-deepest: #0a0e14;
+    --bg: #0d1117;
+    --surface: #151b23;
+    --elevated: #1c2330;
+    --overlay: #242d3a;
+    --border: #2a3342;
+    --border-subtle: #222b38;
+    --text: #e6edf3;
+    --text-secondary: #b0bac5;
+    --text-dim: #7d8a98;
+    --accent: #4da3ff;
+    --accent-hover: #6eb6ff;
+    --accent-glow: rgba(77, 163, 255, 0.25);
+    --accent-subtle: rgba(77, 163, 255, 0.08);
+    --accent-muted: rgba(77, 163, 255, 0.12);
+    --green: #40c463;
+    --green-dim: rgba(64, 196, 99, 0.15);
+    --red: #f0534a;
+    --red-dim: rgba(240, 83, 74, 0.12);
+    --yellow: #e3a832;
+    --yellow-dim: rgba(227, 168, 50, 0.15);
+    --purple: #bc8cff;
+    --orange: #f0a050;
+    --cyan: #56d4dd;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Helvetica, Arial, sans-serif;
+    --radius: 8px;
+    --radius-sm: 5px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3);
+    --shadow-inset: inset 0 1px 3px rgba(0,0,0,0.3);
+    --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg-deepest);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* --- Scrollbar Styling --- */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); background-clip: padding-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
+  /* --- Header --- */
+  header {
+    background: linear-gradient(180deg, var(--elevated) 0%, var(--surface) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 10;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent) 0%, #3080d8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(77,163,255,0.3);
+    flex-shrink: 0;
+  }
+
+  .brand-icon svg { width: 16px; height: 16px; }
+
+  .icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .icon svg { display: block; }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    font-family: var(--mono);
+    letter-spacing: -0.02em;
+  }
+
+  header h1 span {
+    color: var(--accent);
+  }
+
+  .connect-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    max-width: 740px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+
+  .connect-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .connect-bar .status-indicator {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    flex-shrink: 0;
+  }
+
+  .connect-bar input[type="text"] {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 7px 8px;
+    font-size: 13px;
+    font-family: var(--mono);
+    outline: none;
+    min-width: 140px;
+  }
+
+  .connect-bar input[type="text"]::placeholder { color: var(--text-dim); }
+
+  .connect-bar .bar-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .connect-bar .bar-options {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    flex-shrink: 0;
+  }
+
+  .connect-bar .bar-action {
+    flex-shrink: 0;
+  }
+
+  .connect-bar .bar-action button {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    height: 32px;
+    padding: 0 16px;
+  }
+
+  /* --- Inputs Base --- */
+  input[type="text"], select, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 11px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+
+  input[type="text"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  /* --- Buttons --- */
+  button {
+    background: linear-gradient(180deg, var(--accent) 0%, #3a8ae6 100%);
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  button:hover {
+    background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(77, 163, 255, 0.3);
+  }
+
+  button:active {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
+  button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  button.secondary {
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    box-shadow: none;
+  }
+
+  button.secondary:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--overlay);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  button.secondary:active { transform: translateY(0); box-shadow: none; }
+
+  button.danger {
+    background: transparent;
+    border: 1px solid rgba(240,83,74,0.4);
+    color: var(--red);
+    box-shadow: none;
+  }
+
+  button.danger:hover {
+    background: var(--red-dim);
+    border-color: var(--red);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(240,83,74,0.2);
+  }
+
+  button.danger:active { transform: translateY(0); box-shadow: none; }
+
+  /* --- Checkboxes --- */
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+    user-select: none;
+  }
+
+  .checkbox-label:hover { color: var(--text-secondary); }
+
+  .checkbox-label input {
+    accent-color: var(--accent);
+    width: 13px;
+    height: 13px;
+  }
+
+  /* --- Status Dot --- */
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(240,83,74,0.4);
+    transition: all var(--transition-normal);
+    position: relative;
+  }
+
+  .status-dot::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid rgba(240,83,74,0.2);
+    transition: border-color var(--transition-normal);
+  }
+
+  .status-dot.connected {
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(64,196,99,0.5);
+  }
+
+  .status-dot.connected::after {
+    border-color: rgba(64,196,99,0.25);
+  }
+
+  @keyframes pulse-connected {
+    0%, 100% { box-shadow: 0 0 6px rgba(64,196,99,0.5); }
+    50% { box-shadow: 0 0 12px rgba(64,196,99,0.7); }
+  }
+
+  .status-dot.connected {
+    animation: pulse-connected 2.5s ease-in-out infinite;
+  }
+
+  /* --- Main Layout --- */
+  .main-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* --- Sidebar --- */
+  .sidebar {
+    width: 280px;
+    min-width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+    z-index: 5;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+
+  .service-group {
+    margin-bottom: 2px;
+  }
+
+  .service-name {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    transition: all var(--transition-fast);
+    border-radius: 4px;
+    margin: 0 6px;
+  }
+
+  .service-name:hover {
+    color: var(--text);
+    background: var(--accent-subtle);
+  }
+
+  .service-name .arrow {
+    transition: transform var(--transition-normal);
+    opacity: 0.5;
+    flex-shrink: 0;
+    width: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .service-name .arrow svg { width: 10px; height: 10px; }
+
+  .service-name .arrow.open { transform: rotate(90deg); opacity: 1; }
+
+  .service-name .svc-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: var(--accent-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .service-name .svc-icon svg { width: 11px; height: 11px; }
+
+  .method-list {
+    display: none;
+    overflow: hidden;
+  }
+
+  .method-list.open {
+    display: block;
+    animation: slideDown 0.2s ease-out;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .method-item {
+    padding: 7px 14px 7px 52px;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-left: 3px solid transparent;
+    margin-left: 6px;
+    position: relative;
+  }
+
+  .method-item::before {
+    content: '';
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    width: 10px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .method-item:hover {
+    background: var(--accent-subtle);
+    color: var(--text);
+    border-left-color: rgba(77,163,255,0.3);
+  }
+
+  .method-item.selected {
+    background: var(--accent-muted);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* --- Workspace --- */
+  .workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .method-bar {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 2;
+  }
+
+  .method-bar .method-name {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+
+  .method-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+
+  .method-badge.unary { background: var(--green-dim); color: var(--green); }
+  .method-badge.streaming { background: var(--yellow-dim); color: var(--yellow); }
+
+  .method-bar .send-btn {
+    padding: 8px 22px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    min-width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .method-bar .send-btn svg {
+    width: 13px;
+    height: 13px;
+    transition: transform var(--transition-fast);
+  }
+
+  .method-bar .send-btn:hover svg {
+    transform: translateX(2px);
+  }
+
+  .headers-toggle {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    border: 1px solid transparent;
+  }
+
+  .headers-toggle:hover {
+    color: var(--text-secondary);
+    background: var(--accent-subtle);
+    border-color: var(--border);
+  }
+
+  .headers-editor {
+    display: none;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--elevated);
+  }
+
+  .headers-editor.open { display: block; }
+
+  .headers-editor textarea {
+    width: 100%;
+    height: 60px;
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .headers-editor .hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  /* --- Panels --- */
+  .panels {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .panel + .panel {
+    border-left: 1px solid var(--border);
+    position: relative;
+  }
+
+  .panel-header {
+    padding: 10px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-header .panel-tab {
+    padding-bottom: 2px;
+    border-bottom: 2px solid var(--accent);
+    color: var(--text-secondary);
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  textarea.code-editor {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    border: none;
+    border-radius: 0;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.65;
+    tab-size: 2;
+    background: var(--bg-deepest);
+    color: var(--text);
+    font-family: var(--mono);
+    box-shadow: var(--shadow-inset);
+  }
+
+  textarea.code-editor:focus {
+    box-shadow: var(--shadow-inset), inset 0 0 0 1px var(--accent-glow);
+    border: none;
+  }
+
+  .template-btn {
+    padding: 3px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    gap: 4px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .template-btn .tmpl-icon {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  /* --- Response Output --- */
+  .response-output {
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 100%;
+    background: var(--bg-deepest);
+  }
+
+  .response-output.error { color: var(--red); }
+
+  /* JSON syntax highlighting */
+  .json-key { color: var(--cyan); }
+  .json-string { color: var(--green); }
+  .json-number { color: var(--orange); }
+  .json-boolean { color: var(--purple); }
+  .json-null { color: var(--red); opacity: 0.7; }
+  .json-brace { color: var(--text-dim); }
+  .json-comment { color: var(--text-dim); font-style: italic; }
+
+  /* --- Metadata --- */
+  .metadata-section {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--elevated);
+    flex-shrink: 0;
+    max-height: 130px;
+    overflow-y: auto;
+  }
+
+  .metadata-section .label {
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .metadata-section .entry {
+    padding: 2px 0;
+    color: var(--text-dim);
+  }
+
+  .status-line {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-family: var(--mono);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .status-code { font-weight: 700; }
+  .status-code.ok { color: var(--green); }
+  .status-code.error { color: var(--red); }
+
+  .duration {
+    font-size: 11px;
+    color: var(--bg);
+    font-family: var(--mono);
+    font-weight: 700;
+    background: var(--accent);
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+  }
+
+  .duration:empty { display: none; }
+
+  /* --- Empty State --- */
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 14px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .empty-state .empty-icon {
+    margin-bottom: 14px;
+    opacity: 0.25;
+    display: flex;
+    justify-content: center;
+  }
+
+  .empty-state .empty-icon svg { width: 40px; height: 40px; }
+
+  .empty-state p { margin: 4px 0; }
+
+  .empty-state .empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .empty-state .empty-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* --- Proto Upload --- */
+  .proto-upload {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--elevated);
+  }
+
+  .proto-upload-area {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--bg);
+  }
+
+  .proto-upload-area:hover {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .proto-upload-area.dragover {
+    border-color: var(--accent);
+    background: var(--accent-muted);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .proto-upload-area .upload-icon {
+    margin-bottom: 6px;
+    color: var(--accent);
+    opacity: 0.7;
+    display: flex;
+    justify-content: center;
+  }
+
+  .proto-upload-area .upload-icon svg { width: 22px; height: 22px; }
+
+  .proto-upload-area .upload-title {
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+  }
+
+  .proto-files-list {
+    margin-top: 8px;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+  }
+
+  .proto-files-list .file-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+  }
+
+  .proto-files-list .file-entry .name {
+    color: var(--green);
+  }
+
+  .proto-files-list .file-entry::before {
+    content: '-';
+    color: var(--green);
+    font-size: 10px;
+  }
+
+  /* --- Spinner --- */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2.5px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.65s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* --- Resize handle visual hint --- */
+  .panel + .panel::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 32px;
+    border-radius: 2px;
+    background: var(--border);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    pointer-events: none;
+  }
+
+  .panel + .panel:hover::before {
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+    <h1>web-<span>grpcurl</span></h1>
+  </div>
+  <div class="connect-bar">
+    <div class="status-indicator">
+      <div class="status-dot" id="statusDot"></div>
+    </div>
+    <input type="text" id="targetInput" placeholder="localhost:50051" value="">
+    <div class="bar-divider"></div>
+    <div class="bar-options">
+      <label class="checkbox-label"><input type="checkbox" id="tlsCheck"> TLS</label>
+      <label class="checkbox-label"><input type="checkbox" id="insecureCheck"> Skip Verify</label>
+    </div>
+    <div class="bar-action">
+      <button id="connectBtn" onclick="connect()">Connect</button>
+      <button class="danger" id="disconnectBtn" onclick="disconnect()" style="display:none">Disconnect</button>
+    </div>
+  </div>
+</header>
+
+<div class="main-layout">
+  <div class="sidebar">
+    <div class="sidebar-header">Services</div>
+    <div class="sidebar-list" id="serviceList">
+      <div class="empty-state">
+        <div>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+          <p class="empty-title">No connection</p>
+          <p class="empty-sub">Enter a gRPC server address<br>and click Connect</p>
+        </div>
+      </div>
+    </div>
+    <div class="proto-upload" id="protoUpload" style="display:none">
+      <input type="file" id="protoFileInput" multiple accept=".proto,.protoset,.pb,.bin" style="display:none" onchange="handleProtoFiles(this.files)">
+      <div class="proto-upload-area" id="protoDropArea" onclick="document.getElementById('protoFileInput').click()">
+        <div class="upload-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="upload-title">Upload .proto or .protoset files</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">for servers without reflection</div>
+      </div>
+      <div class="proto-files-list" id="protoFilesList"></div>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <div class="method-bar" id="methodBar" style="display:none">
+      <span class="method-name" id="selectedMethodName"></span>
+      <span class="method-badge" id="methodBadge"></span>
+      <span class="headers-toggle" onclick="toggleHeaders()"><svg style="width:12px;height:12px;vertical-align:-1px;margin-right:3px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Headers</span>
+      <button class="send-btn" id="sendBtn" onclick="invokeRPC()"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Send</button>
+    </div>
+
+    <div class="headers-editor" id="headersEditor">
+      <textarea id="headersInput" placeholder='{"authorization": "Bearer token"}'>{}</textarea>
+      <div class="hint">JSON object of header key/value pairs. Applied as gRPC metadata.</div>
+    </div>
+
+    <div class="panels" id="panels" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-tab">Request</span>
+          <button class="secondary template-btn" onclick="loadTemplate()"><span class="tmpl-icon">{ }</span> Template</button>
+        </div>
+        <div class="panel-body">
+          <textarea class="code-editor" id="requestEditor" spellcheck="false">{}</textarea>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-tab">Response</span>
+          <span class="duration" id="duration"></span>
+        </div>
+        <div class="panel-body" id="responseBody">
+          <div class="response-output" id="responseOutput"></div>
+        </div>
+        <div class="metadata-section" id="metadataSection" style="display:none"></div>
+        <div class="status-line" id="statusLine" style="display:none">
+          <span style="color:var(--text-dim);font-weight:500">Status:</span>
+          <span class="status-code" id="statusCode"></span>
+          <span id="statusMessage" style="color:var(--text-dim)"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="workspaceEmpty">
+      <div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <p class="empty-title">Select a method from the sidebar</p>
+        <p class="empty-sub">Connect to a gRPC server to browse<br>available services and methods</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentTarget = '';
+let currentMethod = '';
+let services = [];
+
+// Inline SVG icon definitions for dynamic HTML
+const ICONS = {
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  service: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+  server: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
+};
+
+async function apiCall(method, url, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+async function connect() {
+  const target = document.getElementById('targetInput').value.trim();
+  if (!target) return;
+
+  const btn = document.getElementById('connectBtn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting...';
+
+  try {
+    const tls = document.getElementById('tlsCheck').checked;
+    const insecure = document.getElementById('insecureCheck').checked;
+    const data = await apiCall('POST', '/api/connect', { target, tls, insecure });
+
+    if (data.error) {
+      alert('Connection failed: ' + data.error);
+      return;
+    }
+
+    currentTarget = target;
+    services = data.services || [];
+    document.getElementById('statusDot').classList.add('connected');
+    document.getElementById('connectBtn').style.display = 'none';
+    document.getElementById('disconnectBtn').style.display = '';
+    document.getElementById('protoUpload').style.display = '';
+    renderServices(services);
+
+    if (data.warning) {
+      console.warn(data.warning);
+    }
+  } catch (e) {
+    alert('Connection error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Connect';
+  }
+}
+
+async function disconnect() {
+  if (currentTarget) {
+    await apiCall('POST', '/api/disconnect', { target: currentTarget });
+  }
+  currentTarget = '';
+  currentMethod = '';
+  services = [];
+  document.getElementById('statusDot').classList.remove('connected');
+  document.getElementById('connectBtn').style.display = '';
+  document.getElementById('disconnectBtn').style.display = 'none';
+  document.getElementById('serviceList').innerHTML = '<div class="empty-state"><div><div class="empty-icon">' + ICONS.server + '</div><p class="empty-title">No connection</p><p class="empty-sub">Enter a gRPC server address<br>and click Connect</p></div></div>';
+  document.getElementById('protoUpload').style.display = 'none';
+  document.getElementById('protoFilesList').innerHTML = '';
+  hideWorkspace();
+}
+
+function renderServices(svcs) {
+  const list = document.getElementById('serviceList');
+  if (!svcs.length) {
+    list.innerHTML = '<div class="empty-state"><div><div class="empty-icon">' + ICONS.server + '</div><p class="empty-title">No services found</p></div></div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  for (const svc of svcs) {
+    // Skip reflection services from the list
+    if (svc.startsWith('grpc.reflection.')) continue;
+
+    const group = document.createElement('div');
+    group.className = 'service-group';
+
+    const shortName = svc.split('.').pop();
+    const nameEl = document.createElement('div');
+    nameEl.className = 'service-name';
+    nameEl.innerHTML = '<span class="arrow">' + ICONS.chevron + '</span><span class="svc-icon">' + ICONS.service + '</span>' + escapeHtml(shortName);
+    nameEl.title = svc;
+
+    const methodList = document.createElement('div');
+    methodList.className = 'method-list';
+
+    nameEl.onclick = async () => {
+      const arrow = nameEl.querySelector('.arrow');
+      const isOpen = methodList.classList.contains('open');
+      if (isOpen) {
+        methodList.classList.remove('open');
+        arrow.classList.remove('open');
+        return;
+      }
+      arrow.classList.add('open');
+      methodList.classList.add('open');
+
+      if (methodList.children.length > 0) return;
+
+      const data = await apiCall('GET', '/api/methods?target=' + encodeURIComponent(currentTarget) + '&service=' + encodeURIComponent(svc));
+      if (data.error) { methodList.textContent = data.error; return; }
+
+      for (const m of (data.methods || [])) {
+        const item = document.createElement('div');
+        item.className = 'method-item';
+        const parts = m.split('.');
+        item.textContent = parts[parts.length - 1];
+        item.title = m;
+        item.onclick = (e) => {
+          e.stopPropagation();
+          selectMethod(m, item);
+        };
+        methodList.appendChild(item);
+      }
+    };
+
+    group.appendChild(nameEl);
+    group.appendChild(methodList);
+    list.appendChild(group);
+  }
+}
+
+async function selectMethod(fullName, el) {
+  document.querySelectorAll('.method-item.selected').forEach(e => e.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+
+  currentMethod = fullName;
+  document.getElementById('selectedMethodName').textContent = fullName;
+  document.getElementById('methodBar').style.display = '';
+  document.getElementById('panels').style.display = '';
+  document.getElementById('workspaceEmpty').style.display = 'none';
+
+  // Clear previous response
+  document.getElementById('responseOutput').textContent = '';
+  document.getElementById('responseOutput').innerHTML = '';
+  document.getElementById('responseOutput').className = 'response-output';
+  document.getElementById('metadataSection').style.display = 'none';
+  document.getElementById('statusLine').style.display = 'none';
+  document.getElementById('duration').textContent = '';
+
+  // Fetch method descriptor for badge and template
+  const data = await apiCall('GET', '/api/describe?target=' + encodeURIComponent(currentTarget) + '&symbol=' + encodeURIComponent(fullName));
+
+  const badge = document.getElementById('methodBadge');
+  if (data.client_streaming || data.server_streaming) {
+    let type = '';
+    if (data.client_streaming && data.server_streaming) type = 'bidi stream';
+    else if (data.server_streaming) type = 'server stream';
+    else type = 'client stream';
+    badge.textContent = type;
+    badge.className = 'method-badge streaming';
+  } else {
+    badge.textContent = 'unary';
+    badge.className = 'method-badge unary';
+  }
+
+  if (data.request_template) {
+    document.getElementById('requestEditor').value = data.request_template;
+  } else {
+    document.getElementById('requestEditor').value = '{}';
+  }
+}
+
+function hideWorkspace() {
+  document.getElementById('methodBar').style.display = 'none';
+  document.getElementById('panels').style.display = 'none';
+  document.getElementById('workspaceEmpty').style.display = '';
+  document.getElementById('headersEditor').classList.remove('open');
+}
+
+function toggleHeaders() {
+  document.getElementById('headersEditor').classList.toggle('open');
+}
+
+async function loadTemplate() {
+  if (!currentMethod) return;
+  const data = await apiCall('GET', '/api/describe?target=' + encodeURIComponent(currentTarget) + '&symbol=' + encodeURIComponent(currentMethod));
+  if (data.request_template) {
+    document.getElementById('requestEditor').value = data.request_template;
+  }
+}
+
+// --- JSON Syntax Highlighter ---
+function highlightJson(jsonStr) {
+  // Escape HTML first
+  let s = jsonStr;
+  // We'll process token by token using a regex approach
+  // Strategy: split the JSON string into tokens and colorize each
+  const html = s.replace(
+    /("(?:\\[\s\S]|[^"\\])*")\s*(:)?|(\b(?:true|false)\b)|(\bnull\b)|(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}\[\]])|([,:])/g,
+    function(match, str, colon, bool, nul, num, brace, punct) {
+      let cls = '';
+      if (str) {
+        const escaped = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (colon) {
+          return '<span class="json-key">' + escaped + '</span>:';
+        }
+        return '<span class="json-string">' + escaped + '</span>';
+      }
+      if (bool) return '<span class="json-boolean">' + match + '</span>';
+      if (nul) return '<span class="json-null">' + match + '</span>';
+      if (num) return '<span class="json-number">' + match + '</span>';
+      if (brace) return '<span class="json-brace">' + match + '</span>';
+      return match;
+    }
+  );
+  return html;
+}
+
+function renderHighlightedResponse(text, isError) {
+  const output = document.getElementById('responseOutput');
+  if (isError) {
+    output.textContent = text;
+    output.className = 'response-output error';
+    return;
+  }
+  // Try to syntax-highlight JSON content
+  // Handle comment lines (// Response N) mixed with JSON
+  const lines = text.split('\n');
+  let inComment = false;
+  let htmlParts = [];
+  let jsonBlock = [];
+
+  function flushJson() {
+    if (jsonBlock.length > 0) {
+      const raw = jsonBlock.join('\n');
+      // Escape HTML chars not inside quotes, then highlight
+      const safeRaw = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      htmlParts.push(highlightJson(safeRaw));
+      jsonBlock = [];
+    }
+  }
+
+  for (const line of lines) {
+    if (line.trimStart().startsWith('//')) {
+      flushJson();
+      htmlParts.push('<span class="json-comment">' + line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>');
+    } else {
+      jsonBlock.push(line);
+    }
+  }
+  flushJson();
+
+  output.innerHTML = htmlParts.join('\n');
+  output.className = 'response-output';
+}
+
+async function invokeRPC() {
+  if (!currentTarget || !currentMethod) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const responseOutput = document.getElementById('responseOutput');
+  responseOutput.textContent = '';
+  responseOutput.innerHTML = '';
+  responseOutput.className = 'response-output';
+  document.getElementById('metadataSection').style.display = 'none';
+  document.getElementById('statusLine').style.display = 'none';
+
+  let body;
+  try {
+    body = JSON.parse(document.getElementById('requestEditor').value);
+  } catch (e) {
+    renderHighlightedResponse('Invalid JSON in request body:\n' + e.message, true);
+    btn.disabled = false;
+    btn.innerHTML = ICONS.send + 'Send';
+    return;
+  }
+
+  let headers = {};
+  try {
+    const h = document.getElementById('headersInput').value.trim();
+    if (h) headers = JSON.parse(h);
+  } catch (e) {
+    renderHighlightedResponse('Invalid JSON in headers:\n' + e.message, true);
+    btn.disabled = false;
+    btn.innerHTML = ICONS.send + 'Send';
+    return;
+  }
+
+  const start = performance.now();
+
+  try {
+    const data = await apiCall('POST', '/api/invoke', {
+      target: currentTarget,
+      method: currentMethod,
+      body: body,
+      headers: headers,
+    });
+
+    const elapsed = performance.now() - start;
+    document.getElementById('duration').textContent = Math.round(elapsed) + 'ms';
+
+    // Display response
+    if (data.response) {
+      const formatted = typeof data.response === 'string' ? data.response : JSON.stringify(data.response, null, 2);
+      renderHighlightedResponse(formatted, false);
+    } else if (data.responses) {
+      const parts = data.responses.map((r, i) => {
+        const formatted = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+        return '// Response ' + (i + 1) + '\n' + formatted;
+      });
+      renderHighlightedResponse(parts.join('\n\n'), false);
+    } else if (data.error) {
+      renderHighlightedResponse(data.error, true);
+    } else {
+      renderHighlightedResponse('(empty response)', false);
+    }
+
+    // Display metadata
+    const metaSection = document.getElementById('metadataSection');
+    let metaHTML = '';
+    if (data.response_headers && Object.keys(data.response_headers).length) {
+      metaHTML += '<div class="label">Response Headers</div>';
+      for (const [k, v] of Object.entries(data.response_headers)) {
+        metaHTML += '<div class="entry">' + escapeHtml(k) + ': ' + escapeHtml(v) + '</div>';
+      }
+    }
+    if (data.response_trailers && Object.keys(data.response_trailers).length) {
+      metaHTML += '<div class="label" style="margin-top:6px">Trailers</div>';
+      for (const [k, v] of Object.entries(data.response_trailers)) {
+        metaHTML += '<div class="entry">' + escapeHtml(k) + ': ' + escapeHtml(v) + '</div>';
+      }
+    }
+    if (metaHTML) {
+      metaSection.innerHTML = metaHTML;
+      metaSection.style.display = '';
+    }
+
+    // Display status
+    if (data.status) {
+      const statusLine = document.getElementById('statusLine');
+      const statusCode = document.getElementById('statusCode');
+      const statusMsg = document.getElementById('statusMessage');
+      statusCode.textContent = data.status.code;
+      statusCode.className = 'status-code ' + (data.status.code === 'OK' ? 'ok' : 'error');
+      statusMsg.textContent = data.status.message || '';
+      statusLine.style.display = '';
+    }
+
+    if (data.error && !data.response && !data.responses) {
+      renderHighlightedResponse(data.error, true);
+    }
+  } catch (e) {
+    renderHighlightedResponse('Request failed: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = ICONS.send + 'Send';
+  }
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Keyboard shortcut: Ctrl+Enter to send
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    invokeRPC();
+  }
+});
+
+// --- Proto file upload ---
+
+const dropArea = document.getElementById('protoDropArea');
+dropArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropArea.classList.add('dragover');
+});
+dropArea.addEventListener('dragleave', () => {
+  dropArea.classList.remove('dragover');
+});
+dropArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropArea.classList.remove('dragover');
+  if (e.dataTransfer.files.length) {
+    handleProtoFiles(e.dataTransfer.files);
+  }
+});
+
+async function handleProtoFiles(fileList) {
+  if (!currentTarget || !fileList.length) return;
+
+  const formData = new FormData();
+  formData.append('target', currentTarget);
+
+  const fileNames = [];
+  for (const f of fileList) {
+    formData.append('protos', f);
+    fileNames.push(f.name);
+  }
+
+  // Show uploading state
+  const listEl = document.getElementById('protoFilesList');
+  listEl.innerHTML = '<div style="color:var(--accent)">Uploading & parsing...</div>';
+
+  try {
+    const res = await fetch('/api/upload-protos', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.error) {
+      listEl.innerHTML = '<div style="color:var(--red)">' + escapeHtml(data.error) + '</div>';
+      return;
+    }
+
+    // Show uploaded files
+    listEl.innerHTML = fileNames.map(n =>
+      '<div class="file-entry"><span class="name">' + escapeHtml(n) + '</span></div>'
+    ).join('');
+
+    // Refresh service list with new source
+    services = data.services || [];
+    renderServices(services);
+    hideWorkspace();
+  } catch (e) {
+    listEl.innerHTML = '<div style="color:var(--red)">Upload failed: ' + escapeHtml(e.message) + '</div>';
+  }
+
+  // Reset file input so same files can be re-selected
+  document.getElementById('protoFileInput').value = '';
+}
+</script>
+
+</body>
+</html>

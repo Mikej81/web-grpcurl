@@ -5,5 +5,4 @@ VERSION
 *.snap
 
 # Binaries
-web-grpcurl
-cmd/web-grpcurl/web-grpcurl
+/web-grpcurl
