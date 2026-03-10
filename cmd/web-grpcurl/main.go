@@ -144,9 +144,10 @@ func main() {
 }
 
 type connectRequest struct {
-	Target   string `json:"target"`
-	TLS      bool   `json:"tls"`
-	Insecure bool   `json:"insecure"`
+	Target    string `json:"target"`
+	TLS       bool   `json:"tls"`
+	Insecure  bool   `json:"insecure"`
+	Authority string `json:"authority"`
 }
 
 func writeJSON(w http.ResponseWriter, code int, v interface{}) {
@@ -191,7 +192,12 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 		creds = credentials.NewTLS(tlsConf)
 	}
 
-	cc, err := grpcurl.BlockingDial(dialCtx, "", req.Target, creds)
+	var dialOpts []grpc.DialOption
+	if req.Authority != "" {
+		dialOpts = append(dialOpts, grpc.WithAuthority(req.Authority))
+	}
+
+	cc, err := grpcurl.BlockingDial(dialCtx, "", req.Target, creds, dialOpts...)
 	if err != nil {
 		writeErr(w, 502, "failed to connect: "+err.Error())
 		return
