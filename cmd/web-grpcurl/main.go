@@ -28,6 +28,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var version = "dev"
+
 //go:embed static
 var staticFS embed.FS
 
