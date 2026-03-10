@@ -3,8 +3,7 @@ dist/
 .tmp/
 .git/
 *.snap
-VERSION
-web-grpcurl
+/web-grpcurl
 README.md
 LICENSE
 Makefile
