@@ -7,3 +7,5 @@ VERSION
 # Binaries
 /web-grpcurl
 test-proto/
+
+.nfs*

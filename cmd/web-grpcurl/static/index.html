@@ -905,6 +905,7 @@
       <button class="danger" id="disconnectBtn" onclick="disconnect()" style="display:none">Disconnect</button>
     </div>
   </div>
+  <div id="connectStatus" style="font-size:11px;color:var(--muted);text-align:center;height:16px;line-height:16px;"></div>
 </header>
 
 <div class="main-layout">
@@ -1005,8 +1006,16 @@ async function connect() {
   if (!target) return;
 
   const btn = document.getElementById('connectBtn');
+  const status = document.getElementById('connectStatus');
   btn.disabled = true;
   btn.textContent = 'Connecting...';
+  status.textContent = 'Dialing server...';
+
+  // Advance status after a short delay to indicate reflection phase.
+  // The server dials first (~fast), then probes reflection (up to 5s).
+  const reflTimer = setTimeout(() => {
+    status.textContent = 'Checking reflection (up to 5s)...';
+  }, 1500);
 
   try {
     const tls = document.getElementById('tlsCheck').checked;
@@ -1014,7 +1023,10 @@ async function connect() {
     const authority = document.getElementById('authorityInput').value.trim();
     const data = await apiCall('POST', '/api/connect', { target, tls, insecure, authority });
 
+    clearTimeout(reflTimer);
+
     if (data.error) {
+      status.textContent = '';
       alert('Connection failed: ' + data.error);
       return;
     }
@@ -1028,9 +1040,14 @@ async function connect() {
     renderServices(services);
 
     if (data.warning) {
-      console.warn(data.warning);
+      status.textContent = 'No reflection -- upload proto files';
+      setTimeout(() => { status.textContent = ''; }, 5000);
+    } else {
+      status.textContent = '';
     }
   } catch (e) {
+    clearTimeout(reflTimer);
+    status.textContent = '';
     alert('Connection error: ' + e.message);
   } finally {
     btn.disabled = false;

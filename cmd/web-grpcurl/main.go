@@ -177,6 +177,9 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 
 	store.remove(req.Target)
 
+	log.Printf("[connect] dialing %s (tls=%v insecure=%v authority=%q)", req.Target, req.TLS, req.Insecure, req.Authority)
+	dialStart := time.Now()
+
 	// Use a timeout context only for the dial, not for the long-lived
 	// reflection client/descriptor source (those must outlive this request).
 	dialCtx, dialCancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -199,23 +202,36 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 
 	cc, err := grpcurl.BlockingDial(dialCtx, "", req.Target, creds, dialOpts...)
 	if err != nil {
+		log.Printf("[connect] dial failed after %v: %v", time.Since(dialStart), err)
 		writeErr(w, 502, "failed to connect: "+err.Error())
 		return
 	}
+	log.Printf("[connect] dial succeeded in %v", time.Since(dialStart))
 
-	// Background context for the reflection client so it survives beyond this HTTP request.
-	refClient := grpcreflect.NewClientAuto(context.Background(), cc)
-	source := grpcurl.DescriptorSourceFromServer(context.Background(), refClient)
+	// Try reflection with a short timeout -- many servers don't support it.
+	refCtx, refCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	refClient := grpcreflect.NewClientAuto(refCtx, cc)
+	source := grpcurl.DescriptorSourceFromServer(refCtx, refClient)
+
+	log.Printf("[connect] querying reflection...")
+	refStart := time.Now()
+	svcs, err := grpcurl.ListServices(source)
+	refCancel()
+	log.Printf("[connect] reflection completed in %v (err=%v)", time.Since(refStart), err)
+
+	// Re-create the reflection client with a long-lived context for later use.
+	refClientLong := grpcreflect.NewClientAuto(context.Background(), cc)
+	sourceLong := grpcurl.DescriptorSourceFromServer(context.Background(), refClientLong)
 
 	store.put(req.Target, &connEntry{
 		conn:   cc,
-		source: source,
+		source: sourceLong,
 		target: req.Target,
 		usedAt: time.Now(),
 	})
 
-	svcs, err := grpcurl.ListServices(source)
 	if err != nil {
+		log.Printf("[connect] reflection not available for %s: %v", req.Target, err)
 		writeJSON(w, 200, map[string]interface{}{
 			"connected": true,
 			"services":  []string{},
@@ -224,6 +240,7 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("[connect] found %d services on %s", len(svcs), req.Target)
 	writeJSON(w, 200, map[string]interface{}{
 		"connected": true,
 		"services":  svcs,
