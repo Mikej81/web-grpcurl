@@ -1,0 +1,13 @@
+dist/
+.idea/
+.tmp/
+.git/
+*.snap
+VERSION
+web-grpcurl
+README.md
+LICENSE
+Makefile
+*.sh
+releasing/
+snap/

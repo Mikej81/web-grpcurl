@@ -3,3 +3,7 @@ dist/
 VERSION
 .tmp/
 *.snap
+
+# Binaries
+web-grpcurl
+cmd/web-grpcurl/web-grpcurl

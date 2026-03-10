@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ["1.24", "1.25"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build grpcurl CLI
+        run: go build ./cmd/grpcurl
+
+      - name: Build web-grpcurl
+        run: go build ./cmd/web-grpcurl
+
+      - name: Run tests
+        run: CGO_ENABLED=1 go test -race ./...
+
+      - name: Vet
+        run: go vet ./...
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build web-grpcurl Docker image
+        run: docker build -f Dockerfile.web -t web-grpcurl:ci .
+
+      - name: Build grpcurl Docker image
+        run: |
+          echo "ci" > VERSION
+          docker build -t grpcurl:ci .
+          rm VERSION

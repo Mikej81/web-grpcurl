@@ -1,0 +1,30 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /build
+
+# Cache dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source
+COPY *.go ./
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+
+# Build a static binary
+ENV CGO_ENABLED=0
+RUN go build -o /web-grpcurl \
+    -ldflags "-w -s -extldflags '-static'" \
+    ./cmd/web-grpcurl
+
+# Runtime image
+FROM alpine:3
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S webgrpcurl && adduser -S webgrpcurl -G webgrpcurl
+COPY --from=builder /web-grpcurl /bin/web-grpcurl
+
+USER webgrpcurl
+EXPOSE 8080
+
+ENTRYPOINT ["/bin/web-grpcurl"]
+CMD ["-listen", ":8080"]
